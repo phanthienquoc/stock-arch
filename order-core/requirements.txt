@@ -1,0 +1,8 @@
+# Go dependencies for order-core
+# Automatically managed by go.mod and go.sum
+# 
+# Main dependencies:
+# - github.com/redis/go-redis/v9  : High-performance Redis client
+# - github.com/joho/godotenv       : Load .env files
+#
+# Note: This file is kept for reference. Use 'go mod tidy' to manage deps.

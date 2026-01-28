@@ -1,0 +1,72 @@
+name: Promote to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version tag (e.g., v1.1.0)"
+        required: true
+        type: string
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.inputs.version }}
+
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Deploy to Production VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            
+            echo "🚀 PRODUCTION DEPLOYMENT INITIATED"
+            echo "Version: ${{ github.event.inputs.version }}"
+            
+            cd /app/trading || cd app/trading || exit 1
+            
+            VERSION="${{ github.event.inputs.version }}"
+            VERSION_TAG="${VERSION#v}"
+            
+            # Create/Update .env file with specific version tags
+            echo "📝 Updating .env file to version $VERSION_TAG..."
+            cat <<EOF | sed 's/^[[:space:]]*//' > .env
+            ORDER_CORE_IMAGE=alexanderloveiris/order-core:${VERSION_TAG}
+            ORDER_STATE_IMAGE=alexanderloveiris/order-state:${VERSION_TAG}
+            RISK_ENGINE_IMAGE=alexanderloveiris/risk-engine:${VERSION_TAG}
+            TPSL_ENGINE_IMAGE=alexanderloveiris/tp-sl-engine:${VERSION_TAG}
+            NOTIFY_SERVICE_IMAGE=alexanderloveiris/notify-service:${VERSION_TAG}
+            # Infrastructure
+            REDIS_HOST=\${REDIS_HOST:-managed-redis.xxxx}
+            REDIS_PORT=\${REDIS_PORT:-6379}
+            EOF
+
+            # Pull specific versions
+            echo "📥 Pulling Docker images..."
+            docker compose pull
+            
+            # Start services (using the versioned tags in .env)
+            echo "🔄 Starting production services..."
+            docker compose up -d
+            
+            echo "✅ Production deployment completed!"
+            docker compose ps
+
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "✅ PRODUCTION DEPLOYMENT SUCCESSFUL"
+          echo "📦 Version: ${{ github.event.inputs.version }}"
