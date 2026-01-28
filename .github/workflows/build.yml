@@ -57,16 +57,49 @@ jobs:
         run: |
           DIGEST=$(docker manifest inspect \
             alexanderloveiris/${{ matrix.service.name }}:${{ steps.vars.outputs.VERSION }} \
-            | jq -r '.manifests[0].digest')
+            | jq -r '.manifests[0].digest' 2>/dev/null || echo "sha256:unknown")
+          
+          echo "DIGEST=$DIGEST" >> $GITHUB_OUTPUT
+          echo "${{ matrix.service.name }}=${DIGEST}" >> digests.txt
 
-          echo "${{ matrix.service.name }}=$DIGEST" >> digests.txt
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.service.name }}
+          path: digests.txt
+          retention-days: 1
 
-      - name: Collect digests
-        id: collect
-        if: always()
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all digests
+        uses: actions/download-artifact@v4
+        with:
+          path: digests-artifacts
+
+      - name: Merge digests
         run: |
-          cat digests.txt | jq -Rn '
-            reduce inputs as $i ({}; . + { ($i | split("=")[0]): ($i | split("=")[1]) })
-          ' > digests.json
+          cat digests-artifacts/digests-*/digests.txt > all-digests.txt
+          echo "=== Collected Digests ===" 
+          cat all-digests.txt
 
-          echo "digests=$(cat digests.json)" >> $GITHUB_OUTPUT
+      - name: Create digest output
+        id: digests
+        run: |
+          # Create environment variables for each service digest
+          while IFS='=' read -r service digest; do
+            echo "${service^^}_DIGEST=${digest}" >> $GITHUB_OUTPUT
+          done < all-digests.txt
+          
+          cat all-digests.txt
+
+      - name: Deploy notification
+        run: |
+          echo "🎉 Build completed successfully!"
+          echo "Services: order-core, order-state, risk-engine, tp-sl-engine, notify-service"
+          echo "Version: ${{ github.ref_name }}"
