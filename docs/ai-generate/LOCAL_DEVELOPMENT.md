@@ -17,19 +17,19 @@ cd trading-new-arch
 
 2. **Start services with docker-compose**
 ```bash
-docker compose -f docker-compose.local.yml up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 3. **Verify services are running**
 ```bash
-docker compose -f docker-compose.local.yml ps
+docker compose -f docker-compose.yml ps
 ```
 
 4. **View logs**
 ```bash
-docker compose -f docker-compose.local.yml logs -f order-core
-docker compose -f docker-compose.local.yml logs -f order-state
-docker compose -f docker-compose.local.yml logs -f risk-engine
+docker compose -f docker-compose.yml logs -f order-core
+docker compose -f docker-compose.yml logs -f order-state
+docker compose -f docker-compose.yml logs -f risk-engine
 ```
 
 ### Services Overview
@@ -45,19 +45,19 @@ docker compose -f docker-compose.local.yml logs -f risk-engine
 
 ```bash
 # Stop all services
-docker compose -f docker-compose.local.yml down
+docker compose -f docker-compose.yml down
 
 # Rebuild a specific service
-docker compose -f docker-compose.local.yml build order-core
+docker compose -f docker-compose.yml build order-core
 
 # Restart a service
-docker compose -f docker-compose.local.yml restart order-core
+docker compose -f docker-compose.yml restart order-core
 
 # Execute command in running container
-docker compose -f docker-compose.local.yml exec order-core /bin/bash
+docker compose -f docker-compose.yml exec order-core /bin/bash
 
 # View Redis streams
-docker compose -f docker-compose.local.yml exec redis redis-cli
+docker compose -f docker-compose.yml exec redis redis-cli
 > XINFO STREAM orders.fast
 > XREAD COUNT 10 STREAMS orders.fast 0
 ```
@@ -65,15 +65,15 @@ docker compose -f docker-compose.local.yml exec redis redis-cli
 ### Development Workflow
 
 1. **Make code changes** to any service in `{service}/app/`
-2. **Rebuild the service**: `docker compose -f docker-compose.local.yml build {service}`
-3. **Restart the service**: `docker compose -f docker-compose.local.yml up -d {service}`
-4. **Check logs**: `docker compose -f docker-compose.local.yml logs -f {service}`
+2. **Rebuild the service**: `docker compose -f docker-compose.yml build {service}`
+3. **Restart the service**: `docker compose -f docker-compose.yml up -d {service}`
+4. **Check logs**: `docker compose -f docker-compose.yml logs -f {service}`
 
 ### Testing Redis Streams
 
 ```bash
 # Connect to Redis
-docker compose -f docker-compose.local.yml exec redis redis-cli
+docker compose -f docker-compose.yml exec redis redis-cli
 
 # View all streams
 XINFO STREAM orders.fast
@@ -89,8 +89,8 @@ XREAD BLOCK 0 STREAMS orders.fast $
 
 ## Local Testing Checklist
 
-- [ ] All containers start successfully: `docker compose -f docker-compose.local.yml ps`
-- [ ] Redis is accessible: `docker compose -f docker-compose.local.yml exec redis redis-cli ping`
+- [ ] All containers start successfully: `docker compose -f docker-compose.yml ps`
+- [ ] Redis is accessible: `docker compose -f docker-compose.yml exec redis redis-cli ping`
 - [ ] Services connect to Redis: Check logs for connection messages
 - [ ] Consumer groups are created: Check with `XINFO GROUPS orders.fast`
 - [ ] Data flows through streams: Test with manual messages
@@ -101,16 +101,16 @@ XREAD BLOCK 0 STREAMS orders.fast $
 
 ### Container fails to start
 ```bash
-docker compose -f docker-compose.local.yml logs {service}
+docker compose -f docker-compose.yml logs {service}
 ```
 
 ### Redis connection refused
-- Check Redis is running: `docker compose -f docker-compose.local.yml ps redis`
+- Check Redis is running: `docker compose -f docker-compose.yml ps redis`
 - Verify port mapping: `docker port {container_id} 6379`
 
 ### Consumer group already exists
 - Consumer groups are created automatically on first run
-- To reset: `docker compose -f docker-compose.local.yml down -v` (removes volumes)
+- To reset: `docker compose -f docker-compose.yml down -v` (removes volumes)
 
 ---
 

@@ -120,7 +120,7 @@ CMD ["./main"]
 
 ### Start Locally
 ```bash
-docker compose -f docker-compose.local.yml up -d order-core
+docker compose -f docker-compose.yml up -d order-core
 docker logs -f order-core
 ```
 

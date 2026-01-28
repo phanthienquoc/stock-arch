@@ -39,7 +39,7 @@ trading-system/
 │   ├── requirements.txt
 │   └── app/main.py
 │
-├── docker-compose.local.yml        ← Dev: builds images + runs Redis
+├── docker-compose.yml        ← Dev: builds images + runs Redis
 ├── docker-compose.yml         ← Prod: pulls images only
 ├── .env.local                      ← Local development variables
 ├── .env                       ← Production variables (CI/CD updates)
@@ -133,22 +133,22 @@ Each with:
 
 ### Step 1: Start Local Development
 ```bash
-docker compose -f docker-compose.local.yml up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 ### Step 2: Verify Services
 ```bash
-docker compose -f docker-compose.local.yml ps
+docker compose -f docker-compose.yml ps
 ```
 
 ### Step 3: View Logs
 ```bash
-docker compose -f docker-compose.local.yml logs -f
+docker compose -f docker-compose.yml logs -f
 ```
 
 ### Step 4: Test Redis Streams
 ```bash
-docker compose -f docker-compose.local.yml exec redis redis-cli
+docker compose -f docker-compose.yml exec redis redis-cli
 XINFO STREAM orders.fast
 ```
 

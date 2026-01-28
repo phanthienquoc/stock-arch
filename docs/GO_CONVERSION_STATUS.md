@@ -91,18 +91,18 @@ go build -o main .
 
 ### Build Docker
 ```bash
-docker compose -f docker-compose.local.yml build order-core
+docker compose -f docker-compose.yml build order-core
 ```
 
 ### Run with Docker Compose
 ```bash
-docker compose -f docker-compose.local.yml up -d order-core
+docker compose -f docker-compose.yml up -d order-core
 docker logs -f order-core
 ```
 
 ### Monitor Redis Stream
 ```bash
-docker compose -f docker-compose.local.yml exec redis redis-cli
+docker compose -f docker-compose.yml exec redis redis-cli
 > XLEN orders.fast
 > XREAD COUNT 5 STREAMS orders.fast 0
 ```

@@ -43,7 +43,7 @@ order-core/
 
 ### Updated Files
 ```
-docker-compose.local.yml  - Added healthcheck
+docker-compose.yml  - Added healthcheck
 requirements.txt          - Updated to reference Go
 app/main.py              - Marked deprecated
 ```
@@ -131,12 +131,12 @@ go build -o main .
 
 ### Build Docker
 ```bash
-docker compose -f docker-compose.local.yml build order-core
+docker compose -f docker-compose.yml build order-core
 ```
 
 ### Run
 ```bash
-docker compose -f docker-compose.local.yml up -d order-core
+docker compose -f docker-compose.yml up -d order-core
 ```
 
 ### Monitor
@@ -145,7 +145,7 @@ docker compose -f docker-compose.local.yml up -d order-core
 docker logs -f order-core
 
 # Check orders in Redis
-docker compose -f docker-compose.local.yml exec redis redis-cli
+docker compose -f docker-compose.yml exec redis redis-cli
 > XLEN orders.fast              # Count
 > XREAD COUNT 5 STREAMS orders.fast 0  # View latest
 ```

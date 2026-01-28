@@ -44,7 +44,7 @@ trading-system/
 ├── tp-sl-engine/
 ├── notify-service/
 │
-├── docker-compose.local.yml       (DEV: Build + Redis)
+├── docker-compose.yml       (DEV: Build + Redis)
 ├── docker-compose.yml        (PROD: Pull images only)
 ├── .env.local                     (Local dev variables)
 ├── .env                      (Production variables - managed by CI)
@@ -66,13 +66,13 @@ git clone <repo-url>
 cd trading-system
 
 # Start all services
-docker compose -f docker-compose.local.yml up -d
+docker compose -f docker-compose.yml up -d
 
 # View logs
-docker compose -f docker-compose.local.yml logs -f
+docker compose -f docker-compose.yml logs -f
 
 # Stop services
-docker compose -f docker-compose.local.yml down
+docker compose -f docker-compose.yml down
 ```
 
 See [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md) for detailed guide.
@@ -93,7 +93,7 @@ Manual setup: See [VPS_DEPLOYMENT.md](./VPS_DEPLOYMENT.md)
 ## 🔄 Development Workflow
 
 1. **Make changes** → Push to feature branch
-2. **Test locally** → `docker compose -f docker-compose.local.yml up`
+2. **Test locally** → `docker compose -f docker-compose.yml up`
 3. **Tag version** → `git tag v1.2.0`
 4. **Push tag** → GitHub Actions builds & deploys
 5. **VPS auto-updates** → No manual intervention needed
@@ -183,7 +183,7 @@ VPS_SSH_KEY            # Private SSH key for VPS
 ### View Redis Streams (local)
 
 ```bash
-docker compose -f docker-compose.local.yml exec redis redis-cli
+docker compose -f docker-compose.yml exec redis redis-cli
 XINFO STREAM orders.fast
 XREAD COUNT 10 STREAMS orders.fast 0
 ```
@@ -194,18 +194,18 @@ XREAD COUNT 10 STREAMS orders.fast 0
 
 ### Services won't start
 ```bash
-docker compose -f docker-compose.local.yml logs
+docker compose -f docker-compose.yml logs
 ```
 
 ### Redis connection error
 ```bash
-docker compose -f docker-compose.local.yml ps redis
+docker compose -f docker-compose.yml ps redis
 ```
 
 ### Need to reset everything
 ```bash
-docker compose -f docker-compose.local.yml down -v
-docker compose -f docker-compose.local.yml up -d
+docker compose -f docker-compose.yml down -v
+docker compose -f docker-compose.yml up -d
 ```
 
 ---

@@ -4,37 +4,37 @@
 
 ### Start all services
 ```bash
-docker compose -f docker-compose.local.yml up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 ### Stop all services
 ```bash
-docker compose -f docker-compose.local.yml down
+docker compose -f docker-compose.yml down
 ```
 
 ### View logs (all)
 ```bash
-docker compose -f docker-compose.local.yml logs -f
+docker compose -f docker-compose.yml logs -f
 ```
 
 ### View logs (specific service)
 ```bash
-docker compose -f docker-compose.local.yml logs -f order-core
+docker compose -f docker-compose.yml logs -f order-core
 ```
 
 ### Rebuild a service
 ```bash
-docker compose -f docker-compose.local.yml build order-core
+docker compose -f docker-compose.yml build order-core
 ```
 
 ### Restart a service
 ```bash
-docker compose -f docker-compose.local.yml restart order-core
+docker compose -f docker-compose.yml restart order-core
 ```
 
 ### Execute command in container
 ```bash
-docker compose -f docker-compose.local.yml exec order-core /bin/bash
+docker compose -f docker-compose.yml exec order-core /bin/bash
 ```
 
 ---
@@ -43,7 +43,7 @@ docker compose -f docker-compose.local.yml exec order-core /bin/bash
 
 ### Connect to Redis
 ```bash
-docker compose -f docker-compose.local.yml exec redis redis-cli
+docker compose -f docker-compose.yml exec redis redis-cli
 ```
 
 ### View all streams
@@ -87,7 +87,7 @@ DEL orders.fast
 
 ### Build local images
 ```bash
-docker compose -f docker-compose.local.yml build
+docker compose -f docker-compose.yml build
 ```
 
 ### Tag for release (triggers CI/CD)
@@ -174,7 +174,7 @@ docker compose -f docker-compose.yml up -d
 
 ### Check why a container exited
 ```bash
-docker compose -f docker-compose.local.yml logs order-core
+docker compose -f docker-compose.yml logs order-core
 ```
 
 ### Inspect container details
@@ -184,15 +184,15 @@ docker inspect <container_id>
 
 ### Test Redis connectivity
 ```bash
-docker compose -f docker-compose.local.yml exec order-core \
+docker compose -f docker-compose.yml exec order-core \
   python -c "import redis; r = redis.Redis(host='redis'); print(r.ping())"
 ```
 
 ### Reset everything (⚠️ dangerous)
 ```bash
-docker compose -f docker-compose.local.yml down -v
+docker compose -f docker-compose.yml down -v
 docker system prune -a
-docker compose -f docker-compose.local.yml up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 ---
@@ -225,8 +225,8 @@ docker events --filter type=container
 
 ### Update all base images
 ```bash
-docker compose -f docker-compose.local.yml pull
-docker compose -f docker-compose.local.yml up -d
+docker compose -f docker-compose.yml pull
+docker compose -f docker-compose.yml up -d
 ```
 
 ### Scan image for vulnerabilities
@@ -246,25 +246,25 @@ USER appuser
 
 ### Save terminal output to file
 ```bash
-docker compose -f docker-compose.local.yml logs > debug.log 2>&1
+docker compose -f docker-compose.yml logs > debug.log 2>&1
 ```
 
 ### Follow multiple container logs
 ```bash
-docker compose -f docker-compose.local.yml logs -f --tail=50
+docker compose -f docker-compose.yml logs -f --tail=50
 ```
 
 ### Check environment variables in container
 ```bash
-docker compose -f docker-compose.local.yml exec order-core env
+docker compose -f docker-compose.yml exec order-core env
 ```
 
 ### Copy file from container
 ```bash
-docker compose -f docker-compose.local.yml cp order-core:/app/data.json ./
+docker compose -f docker-compose.yml cp order-core:/app/data.json ./
 ```
 
 ### Copy file to container
 ```bash
-docker compose -f docker-compose.local.yml cp data.json order-core:/app/
+docker compose -f docker-compose.yml cp data.json order-core:/app/
 ```

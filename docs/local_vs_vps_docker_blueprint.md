@@ -47,7 +47,7 @@ trading-system/
 
 ---
 
-## 2️⃣ docker-compose.local.yml (LOCAL DEV)
+## 2️⃣ docker-compose.yml (LOCAL DEV)
 
 👉 Dùng cho:
 - Dev
