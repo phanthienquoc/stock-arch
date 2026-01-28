@@ -1,0 +1,52 @@
+name: Build & Push Images
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAMESPACE: alexanderloveiris
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    outputs:
+      order_core_digest: ${{ steps.digest.outputs.order_core }}
+      order_state_digest: ${{ steps.digest.outputs.order_state }}
+      risk_engine_digest: ${{ steps.digest.outputs.risk_engine }}
+      tpsl_digest: ${{ steps.digest.outputs.tpsl }}
+      notify_digest: ${{ steps.digest.outputs.notify }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: vars
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push images
+        uses: docker/build-push-action@v5
+        with:
+          context: ./order-core
+          push: true
+          tags: |
+            alexanderloveiris/order-core:${{ steps.vars.outputs.VERSION }}
+
+      - name: Get image digests
+        id: digest
+        run: |
+          echo "order_core=$(docker buildx imagetools inspect alexanderloveiris/order-core:${{ steps.vars.outputs.VERSION }} --format '{{.Digest}}')" >> $GITHUB_OUTPUT
+          echo "order_state=$(docker buildx imagetools inspect alexanderloveiris/order-state:${{ steps.vars.outputs.VERSION }} --format '{{.Digest}}')" >> $GITHUB_OUTPUT
+          echo "risk_engine=$(docker buildx imagetools inspect alexanderloveiris/risk-engine:${{ steps.vars.outputs.VERSION }} --format '{{.Digest}}')" >> $GITHUB_OUTPUT
+          echo "tpsl=$(docker buildx imagetools inspect alexanderloveiris/tp-sl-engine:${{ steps.vars.outputs.VERSION }} --format '{{.Digest}}')" >> $GITHUB_OUTPUT
+          echo "notify=$(docker buildx imagetools inspect alexanderloveiris/notify-service:${{ steps.vars.outputs.VERSION }} --format '{{.Digest}}')" >> $GITHUB_OUTPUT
