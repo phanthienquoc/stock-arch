@@ -27,34 +27,66 @@ jobs:
         id: digests
         run: |
           # Merge all digest files
-          cat build-artifacts/digests-*/digests.txt > all-digests.txt || echo "order-core=sha256:unknown" > all-digests.txt
+          cat build-artifacts/digests-*/digests.txt > all-digests.txt || echo "order-core=latest" > all-digests.txt
           
           echo "📦 Digests found:"
           cat all-digests.txt
           
-          # Create outputs
-          while IFS='=' read -r service digest; do
-            echo "${service^^}_DIGEST=${digest}"
-          done < all-digests.txt | tee digest-output.txt
+          # Set outputs for each service
+          ORDER_CORE=$(grep "^order-core=" all-digests.txt | cut -d'=' -f2 || echo "latest")
+          ORDER_STATE=$(grep "^order-state=" all-digests.txt | cut -d'=' -f2 || echo "latest")
+          RISK_ENGINE=$(grep "^risk-engine=" all-digests.txt | cut -d'=' -f2 || echo "latest")
+          TPSL_ENGINE=$(grep "^tp-sl-engine=" all-digests.txt | cut -d'=' -f2 || echo "latest")
+          NOTIFY=$(grep "^notify-service=" all-digests.txt | cut -d'=' -f2 || echo "latest")
+          
+          echo "ORDER_CORE_DIGEST=$ORDER_CORE" >> $GITHUB_OUTPUT
+          echo "ORDER_STATE_DIGEST=$ORDER_STATE" >> $GITHUB_OUTPUT
+          echo "RISK_ENGINE_DIGEST=$RISK_ENGINE" >> $GITHUB_OUTPUT
+          echo "TPSL_ENGINE_DIGEST=$TPSL_ENGINE" >> $GITHUB_OUTPUT
+          echo "NOTIFY_DIGEST=$NOTIFY" >> $GITHUB_OUTPUT
+          
+          echo "📋 Parsed digests:"
+          echo "  ORDER_CORE: $ORDER_CORE"
+          echo "  ORDER_STATE: $ORDER_STATE"
+          echo "  RISK_ENGINE: $RISK_ENGINE"
+          echo "  TPSL_ENGINE: $TPSL_ENGINE"
+          echo "  NOTIFY: $NOTIFY"
 
       - name: Deploy to Staging VPS
         uses: appleboy/ssh-action@v1.0.0
+        env:
+          ORDER_CORE_DIGEST: ${{ steps.digests.outputs.ORDER_CORE_DIGEST }}
+          ORDER_STATE_DIGEST: ${{ steps.digests.outputs.ORDER_STATE_DIGEST }}
+          RISK_ENGINE_DIGEST: ${{ steps.digests.outputs.RISK_ENGINE_DIGEST }}
+          TPSL_ENGINE_DIGEST: ${{ steps.digests.outputs.TPSL_ENGINE_DIGEST }}
+          NOTIFY_DIGEST: ${{ steps.digests.outputs.NOTIFY_DIGEST }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          envs: ORDER_CORE_DIGEST,ORDER_STATE_DIGEST,RISK_ENGINE_DIGEST,TPSL_ENGINE_DIGEST,NOTIFY_DIGEST
           script: |
             set -e
             
             echo "🚀 Deploying to Staging..."
             cd app/trading || cd /app/trading || exit 1
             
-            # Get digests from build artifacts (passed via env)
-            DIGESTS_FILE="/tmp/digests.txt"
-            echo "Updating services..."
+            # Export digests for docker-compose
+            export ORDER_CORE_DIGEST="${ORDER_CORE_DIGEST:-latest}"
+            export ORDER_STATE_DIGEST="${ORDER_STATE_DIGEST:-latest}"
+            export RISK_ENGINE_DIGEST="${RISK_ENGINE_DIGEST:-latest}"
+            export TPSL_ENGINE_DIGEST="${TPSL_ENGINE_DIGEST:-latest}"
+            export NOTIFY_DIGEST="${NOTIFY_DIGEST:-latest}"
+            
+            echo "📦 Using image tags/digests:"
+            echo "  order-core: $ORDER_CORE_DIGEST"
+            echo "  order-state: $ORDER_STATE_DIGEST"
+            echo "  risk-engine: $RISK_ENGINE_DIGEST"
+            echo "  tp-sl-engine: $TPSL_ENGINE_DIGEST"
+            echo "  notify-service: $NOTIFY_DIGEST"
             
             # Pull latest images
-            echo "📥 Pulling latest Docker images..."
+            echo "📥 Pulling Docker images..."
             docker compose pull || docker compose -f docker-compose.yml pull || true
             
             # Start/restart services

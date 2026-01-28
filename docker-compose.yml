@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   order-core:
-    image: alexanderloveiris/order-core@${ORDER_CORE_DIGEST}
+    image: alexanderloveiris/order-core:${ORDER_CORE_DIGEST:-latest}
     restart: always
     environment:
       - REDIS_HOST=${REDIS_HOST}
@@ -14,7 +14,7 @@ services:
         max-file: "3"
 
   order-state:
-    image: alexanderloveiris/order-state@${ORDER_STATE_DIGEST}
+    image: alexanderloveiris/order-state:${ORDER_STATE_DIGEST:-latest}
     restart: always
     environment:
       - REDIS_HOST=${REDIS_HOST}
@@ -26,7 +26,7 @@ services:
         max-file: "3"
 
   risk-engine:
-    image: alexanderloveiris/risk-engine@${RISK_ENGINE_DIGEST}
+    image: alexanderloveiris/risk-engine:${RISK_ENGINE_DIGEST:-latest}
     restart: always
     environment:
       - REDIS_HOST=${REDIS_HOST}
@@ -38,7 +38,7 @@ services:
         max-file: "3"
 
   tp-sl-engine:
-    image: alexanderloveiris/tp-sl-engine@${TPSL_ENGINE_DIGEST}
+    image: alexanderloveiris/tp-sl-engine:${TPSL_ENGINE_DIGEST:-latest}
     restart: always
     environment:
       - REDIS_HOST=${REDIS_HOST}
@@ -50,7 +50,7 @@ services:
         max-file: "3"
 
   notify-service:
-    image: alexanderloveiris/notify-service@${NOTIFY_DIGEST}
+    image: alexanderloveiris/notify-service:${NOTIFY_DIGEST:-latest}
     restart: always
     environment:
       - REDIS_HOST=${REDIS_HOST}
