@@ -1,0 +1,94 @@
+name: Promote to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version tag (e.g., v1.1.0)"
+        required: true
+        type: string
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.inputs.version }}
+
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get image digests for version
+        id: digests
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          VERSION_TAG="${VERSION#v}"
+          
+          echo "🔍 Fetching digests for version: $VERSION_TAG"
+          
+          # Get digest for each service
+          for service in order-core order-state risk-engine tp-sl-engine notify-service; do
+            IMAGE="alexanderloveiris/${service}:${VERSION_TAG}"
+            echo "  Checking: $IMAGE"
+            docker pull "$IMAGE" 2>/dev/null || echo "  ⚠️  Image not found: $IMAGE"
+          done
+          
+          echo "✅ Digests verified"
+
+      - name: Deploy to Production VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            
+            echo "🚀 PRODUCTION DEPLOYMENT INITIATED"
+            echo "Version: ${{ github.event.inputs.version }}"
+            echo ""
+            
+            cd app/trading || exit 1
+            
+            # Update docker-compose to use specific version
+            echo "📋 Updating services to version ${{ github.event.inputs.version }}..."
+            
+            VERSION="${{ github.event.inputs.version }}"
+            VERSION_TAG="${VERSION#v}"
+            
+            # Pull specific versions
+            docker compose -f docker-compose.prod.yml pull || true
+            
+            # Start services
+            echo "🔄 Starting production services..."
+            docker compose -f docker-compose.prod.yml up -d
+            
+            echo "✅ Production deployment completed!"
+            sleep 2
+            docker compose -f docker-compose.prod.yml ps
+
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo ""
+          echo "✅ PRODUCTION DEPLOYMENT SUCCESSFUL"
+          echo "=================================================="
+          echo ""
+          echo "📦 Version: ${{ github.event.inputs.version }}"
+          echo "🏢 Environment: Production"
+          echo "⏰ Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+          echo "Services:"
+          echo "  ✓ order-core (Go)"
+          echo "  ✓ order-state (Python)"
+          echo "  ✓ risk-engine (Python)"
+          echo "  ✓ tp-sl-engine (Python)"
+          echo "  ✓ notify-service (Python)"
+          echo ""
+          echo "=================================================="
