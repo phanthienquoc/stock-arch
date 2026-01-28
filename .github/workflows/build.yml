@@ -1,0 +1,94 @@
+name: Build & Push Images
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAMESPACE: alexanderloveiris
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    strategy:
+      matrix:
+        service:
+          - name: order-core
+            path: order-core
+          - name: order-state
+            path: order-state
+          - name: risk-engine
+            path: risk-engine
+          - name: tp-sl-engine
+            path: tp-sl-engine
+          - name: notify-service
+            path: notify-service
+
+    outputs:
+      digests: ${{ steps.collect.outputs.digests }}
+      
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: vars
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push ${{ matrix.service.name }} (multi-arch)
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service.path }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            alexanderloveiris/${{ matrix.service.name }}:${{ steps.vars.outputs.VERSION }}
+            alexanderloveiris/${{ matrix.service.name }}:latest
+
+      - name: Save digest
+        run: |
+          echo "${{ matrix.service.name }}=${{ steps.build.outputs.digest }}" > digests.txt
+          cat digests.txt
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.service.name }}
+          path: digests.txt
+          retention-days: 1
+
+  build-summary:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download all digests
+        uses: actions/download-artifact@v4
+        with:
+          path: digests-artifacts
+
+      - name: Display build summary
+        run: |
+          echo "✅ Build completed successfully!"
+          echo ""
+          echo "📦 Services built:"
+          echo "  - order-core (Go)"
+          echo "  - order-state (Python)"
+          echo "  - risk-engine (Python)"
+          echo "  - tp-sl-engine (Python)"
+          echo "  - notify-service (Python)"
+          echo ""
+          echo "📊 Image Digests:"
+          cat digests-artifacts/digests-*/digests.txt
+          echo ""
+          echo "🚀 Staging deployment will auto-trigger..."
