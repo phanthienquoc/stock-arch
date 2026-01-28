@@ -69,37 +69,28 @@ jobs:
           path: digests.txt
           retention-days: 1
 
-  deploy:
+  build-summary:
     needs: build
     runs-on: ubuntu-latest
-    if: success()
-
+    
     steps:
-      - uses: actions/checkout@v4
-
       - name: Download all digests
         uses: actions/download-artifact@v4
         with:
           path: digests-artifacts
 
-      - name: Merge digests
+      - name: Display build summary
         run: |
-          cat digests-artifacts/digests-*/digests.txt > all-digests.txt
-          echo "=== Collected Digests ===" 
-          cat all-digests.txt
-
-      - name: Create digest output
-        id: digests
-        run: |
-          # Create environment variables for each service digest
-          while IFS='=' read -r service digest; do
-            echo "${service^^}_DIGEST=${digest}" >> $GITHUB_OUTPUT
-          done < all-digests.txt
-          
-          cat all-digests.txt
-
-      - name: Deploy notification
-        run: |
-          echo "🎉 Build completed successfully!"
-          echo "Services: order-core, order-state, risk-engine, tp-sl-engine, notify-service"
-          echo "Version: ${{ github.ref_name }}"
+          echo "✅ Build completed successfully!"
+          echo ""
+          echo "📦 Services built:"
+          echo "  - order-core (Go)"
+          echo "  - order-state (Python)"
+          echo "  - risk-engine (Python)"
+          echo "  - tp-sl-engine (Python)"
+          echo "  - notify-service (Python)"
+          echo ""
+          echo "📊 Image Digests:"
+          cat digests-artifacts/digests-*/digests.txt
+          echo ""
+          echo "🚀 Staging deployment will auto-trigger..."

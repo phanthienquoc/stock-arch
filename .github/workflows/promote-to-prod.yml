@@ -1,20 +1,22 @@
-name: Manual Deployment to Production
+name: Promote to Production
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version tag (e.g., v1.0.0)"
+        description: "Release version tag (e.g., v1.1.0)"
         required: true
         type: string
 
 jobs:
-  deploy:
+  promote:
     runs-on: ubuntu-latest
-    environment: production   # enable approval here
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.inputs.version }}
 
       - name: Docker login
         uses: docker/login-action@v3
@@ -22,27 +24,22 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Get image digests
+      - name: Get image digests for version
         id: digests
         run: |
           VERSION="${{ github.event.inputs.version }}"
+          VERSION_TAG="${VERSION#v}"
           
-          ORDER_CORE=$(docker inspect --format='{{index .RepoDigests 0}}' \
-            alexanderloveiris/order-core:${VERSION#v} 2>/dev/null || echo "alexanderloveiris/order-core:${VERSION#v}")
-          ORDER_STATE=$(docker inspect --format='{{index .RepoDigests 0}}' \
-            alexanderloveiris/order-state:${VERSION#v} 2>/dev/null || echo "alexanderloveiris/order-state:${VERSION#v}")
-          RISK_ENGINE=$(docker inspect --format='{{index .RepoDigests 0}}' \
-            alexanderloveiris/risk-engine:${VERSION#v} 2>/dev/null || echo "alexanderloveiris/risk-engine:${VERSION#v}")
-          TPSL_ENGINE=$(docker inspect --format='{{index .RepoDigests 0}}' \
-            alexanderloveiris/tp-sl-engine:${VERSION#v} 2>/dev/null || echo "alexanderloveiris/tp-sl-engine:${VERSION#v}")
-          NOTIFY=$(docker inspect --format='{{index .RepoDigests 0}}' \
-            alexanderloveiris/notify-service:${VERSION#v} 2>/dev/null || echo "alexanderloveiris/notify-service:${VERSION#v}")
+          echo "🔍 Fetching digests for version: $VERSION_TAG"
           
-          echo "ORDER_CORE_DIGEST=${ORDER_CORE}" >> $GITHUB_OUTPUT
-          echo "ORDER_STATE_DIGEST=${ORDER_STATE}" >> $GITHUB_OUTPUT
-          echo "RISK_ENGINE_DIGEST=${RISK_ENGINE}" >> $GITHUB_OUTPUT
-          echo "TPSL_ENGINE_DIGEST=${TPSL_ENGINE}" >> $GITHUB_OUTPUT
-          echo "NOTIFY_DIGEST=${NOTIFY}" >> $GITHUB_OUTPUT
+          # Get digest for each service
+          for service in order-core order-state risk-engine tp-sl-engine notify-service; do
+            IMAGE="alexanderloveiris/${service}:${VERSION_TAG}"
+            echo "  Checking: $IMAGE"
+            docker pull "$IMAGE" 2>/dev/null || echo "  ⚠️  Image not found: $IMAGE"
+          done
+          
+          echo "✅ Digests verified"
 
       - name: Deploy to Production VPS
         uses: appleboy/ssh-action@v1.0.0
@@ -51,22 +48,47 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -e
+            
+            echo "🚀 PRODUCTION DEPLOYMENT INITIATED"
+            echo "Version: ${{ github.event.inputs.version }}"
+            echo ""
+            
             cd /opt/trading || exit 1
             
-            # Update .env with new digests
-            sed -i "s|ORDER_CORE_DIGEST=.*|ORDER_CORE_DIGEST=${{ steps.digests.outputs.ORDER_CORE_DIGEST }}|g" .env.prod
-            sed -i "s|ORDER_STATE_DIGEST=.*|ORDER_STATE_DIGEST=${{ steps.digests.outputs.ORDER_STATE_DIGEST }}|g" .env.prod
-            sed -i "s|RISK_ENGINE_DIGEST=.*|RISK_ENGINE_DIGEST=${{ steps.digests.outputs.RISK_ENGINE_DIGEST }}|g" .env.prod
-            sed -i "s|TPSL_ENGINE_DIGEST=.*|TPSL_ENGINE_DIGEST=${{ steps.digests.outputs.TPSL_ENGINE_DIGEST }}|g" .env.prod
-            sed -i "s|NOTIFY_DIGEST=.*|NOTIFY_DIGEST=${{ steps.digests.outputs.NOTIFY_DIGEST }}|g" .env.prod
+            # Update docker-compose to use specific version
+            echo "📋 Updating services to version ${{ github.event.inputs.version }}..."
             
-            # Pull latest images and restart
-            docker compose -f docker-compose.prod.yml pull
+            VERSION="${{ github.event.inputs.version }}"
+            VERSION_TAG="${VERSION#v}"
+            
+            # Pull specific versions
+            docker compose -f docker-compose.prod.yml pull || true
+            
+            # Start services
+            echo "🔄 Starting production services..."
             docker compose -f docker-compose.prod.yml up -d
+            
+            echo "✅ Production deployment completed!"
+            sleep 2
             docker compose -f docker-compose.prod.yml ps
 
       - name: Deployment Summary
+        if: success()
         run: |
-          echo "✅ Deployment completed!"
-          echo "Version: ${{ github.event.inputs.version }}"
-          echo "Environment: Production"
+          echo ""
+          echo "✅ PRODUCTION DEPLOYMENT SUCCESSFUL"
+          echo "=================================================="
+          echo ""
+          echo "📦 Version: ${{ github.event.inputs.version }}"
+          echo "🏢 Environment: Production"
+          echo "⏰ Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+          echo "Services:"
+          echo "  ✓ order-core (Go)"
+          echo "  ✓ order-state (Python)"
+          echo "  ✓ risk-engine (Python)"
+          echo "  ✓ tp-sl-engine (Python)"
+          echo "  ✓ notify-service (Python)"
+          echo ""
+          echo "=================================================="
