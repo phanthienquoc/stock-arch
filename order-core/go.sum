@@ -1,0 +1,8 @@
+github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsAFe2+PvAR0gm5+MEiV8r4bDWc5EVM7c=
+github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDnJtNmvxlmEoJHz7Z3Z0aD9k=
+github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3rVHaR0xn56ASrulnMsXLSi3J12NU=
+github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGFS7K7AkqVzQmHrwC56aPmpVgu3FqlNM=
+github.com/joho/godotenv v1.5.1 h1:7P7RHcP7F0WB3/sTyy6wDwkxGtsrSzxjsDMV+06+T0=
+github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa49PnSb6qa0=
+github.com/redis/go-redis/v9 v9.5.1 h1:H8RuPlB3+qu3V/W0V6Y/PYLvhzMvJGc+veTVn3YbXQ=
+github.com/redis/go-redis/v9 v9.5.1/go.mod h1:hdY0cQFCN4fnSYT6TkisLuV8IV7LVnasX7FSC13KNg=
