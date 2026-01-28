@@ -47,7 +47,7 @@ jobs:
             set -e
             
             echo "🚀 Deploying to Staging..."
-            cd /opt/trading || cd /app/trading || exit 1
+            cd app/trading || cd /app/trading || exit 1
             
             # Get digests from build artifacts (passed via env)
             DIGESTS_FILE="/tmp/digests.txt"
