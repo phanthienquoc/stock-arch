@@ -1,0 +1,39 @@
+name: Promote Staging to Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production   # enable approval here
+
+    steps:
+      - name: Download staging digests
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-digests
+
+      - name: Load digests
+        run: |
+          echo "ORDER_CORE_DIGEST=$(cat order-core.txt)" >> $GITHUB_ENV
+          echo "ORDER_STATE_DIGEST=$(cat order-state.txt)" >> $GITHUB_ENV
+          echo "RISK_ENGINE_DIGEST=$(cat risk-engine.txt)" >> $GITHUB_ENV
+          echo "TPSL_ENGINE_DIGEST=$(cat tp-sl-engine.txt)" >> $GITHUB_ENV
+          echo "NOTIFY_DIGEST=$(cat notify-service.txt)" >> $GITHUB_ENV
+
+      - name: Deploy to PROD VPS (PROMOTION)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/trading
+            sed -i "s|ORDER_CORE_DIGEST=.*|ORDER_CORE_DIGEST=${ORDER_CORE_DIGEST}|" .env
+            sed -i "s|ORDER_STATE_DIGEST=.*|ORDER_STATE_DIGEST=${ORDER_STATE_DIGEST}|" .env
+            sed -i "s|RISK_ENGINE_DIGEST=.*|RISK_ENGINE_DIGEST=${RISK_ENGINE_DIGEST}|" .env
+            sed -i "s|TPSL_ENGINE_DIGEST=.*|TPSL_ENGINE_DIGEST=${TPSL_ENGINE_DIGEST}|" .env
+            sed -i "s|NOTIFY_DIGEST=.*|NOTIFY_DIGEST=${NOTIFY_DIGEST}|" .env
+            docker compose pull
+            docker compose up -d
