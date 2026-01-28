@@ -45,22 +45,19 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build & push ${{ matrix.service.name }}
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ./${{ matrix.service.path }}
           push: true
           tags: |
             alexanderloveiris/${{ matrix.service.name }}:${{ steps.vars.outputs.VERSION }}
+            alexanderloveiris/${{ matrix.service.name }}:latest
 
-      - name: Get digest
-        id: digest
+      - name: Save digest
         run: |
-          DIGEST=$(docker manifest inspect \
-            alexanderloveiris/${{ matrix.service.name }}:${{ steps.vars.outputs.VERSION }} \
-            | jq -r '.manifests[0].digest' 2>/dev/null || echo "sha256:unknown")
-          
-          echo "DIGEST=$DIGEST" >> $GITHUB_OUTPUT
-          echo "${{ matrix.service.name }}=${DIGEST}" >> digests.txt
+          echo "${{ matrix.service.name }}=${{ steps.build.outputs.digest }}" > digests.txt
+          cat digests.txt
 
       - name: Upload digest artifact
         uses: actions/upload-artifact@v4

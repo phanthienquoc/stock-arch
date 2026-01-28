@@ -2,5 +2,5 @@ git add . &&
 git commit --amend --no-edit && 
 git push origin staging -f &&
 
-git tag v1.0.10 &&
-git push origin v1.0.10
+git tag v1.0.15 &&
+git push origin v1.0.15
