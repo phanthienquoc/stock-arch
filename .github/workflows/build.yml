@@ -1,0 +1,72 @@
+name: Build & Push Images
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAMESPACE: alexanderloveiris
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    strategy:
+      matrix:
+        service:
+          - name: order-core
+            path: order-core
+          - name: order-state
+            path: order-state
+          - name: risk-engine
+            path: risk-engine
+          - name: tp-sl-engine
+            path: tp-sl-engine
+          - name: notify-service
+            path: notify-service
+
+    outputs:
+      digests: ${{ steps.collect.outputs.digests }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: vars
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push ${{ matrix.service.name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service.path }}
+          push: true
+          tags: |
+            alexanderloveiris/${{ matrix.service.name }}:${{ steps.vars.outputs.VERSION }}
+
+      - name: Get digest
+        id: digest
+        run: |
+          DIGEST=$(docker manifest inspect \
+            alexanderloveiris/${{ matrix.service.name }}:${{ steps.vars.outputs.VERSION }} \
+            | jq -r '.manifests[0].digest')
+
+          echo "${{ matrix.service.name }}=$DIGEST" >> digests.txt
+
+      - name: Collect digests
+        id: collect
+        if: always()
+        run: |
+          cat digests.txt | jq -Rn '
+            reduce inputs as $i ({}; . + { ($i | split("=")[0]): ($i | split("=")[1]) })
+          ' > digests.json
+
+          echo "digests=$(cat digests.json)" >> $GITHUB_OUTPUT

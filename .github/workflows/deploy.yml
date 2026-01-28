@@ -1,0 +1,33 @@
+name: Auto Deploy Staging
+
+on:
+  workflow_run:
+    workflows: ["Build & Push Images"]
+    types: [completed]
+
+jobs:
+  deploy-staging:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Deploy STAGING
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/ubuntu/app/trading
+
+            DIGESTS='${{ github.event.workflow_run.outputs.digests }}'
+
+            echo "$DIGESTS" | jq -r '
+              to_entries[] |
+              "sed -i \"s|"+(.key|ascii_upcase|gsub("-";"_"))+"_DIGEST=.*|"+(.key|ascii_upcase|gsub("-";"_"))+"_DIGEST="+.value+"|\" .env"
+            ' | bash
+
+            docker compose pull
+            docker compose up -d
