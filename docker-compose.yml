@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  order-core:
+    image: alexanderloveiris/order-core@${ORDER_CORE_DIGEST}
+    restart: always
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  order-state:
+    image: alexanderloveiris/order-state@${ORDER_STATE_DIGEST}
+    restart: always
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  risk-engine:
+    image: alexanderloveiris/risk-engine@${RISK_ENGINE_DIGEST}
+    restart: always
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  tp-sl-engine:
+    image: alexanderloveiris/tp-sl-engine@${TPSL_ENGINE_DIGEST}
+    restart: always
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  notify-service:
+    image: alexanderloveiris/notify-service@${NOTIFY_DIGEST}
+    restart: always
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
