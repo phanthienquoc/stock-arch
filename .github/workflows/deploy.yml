@@ -1,0 +1,112 @@
+name: Auto Deploy to Staging
+
+on:
+  workflow_run:
+    workflows: ["Build & Push Images"]
+    types: [completed]
+
+jobs:
+  deploy-staging:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Download digests from build workflow
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          path: build-artifacts
+
+      - name: Parse digests
+        id: digests
+        run: |
+          # Merge all digest files
+          cat build-artifacts/digests-*/digests.txt > all-digests.txt || echo "order-core=sha256:unknown" > all-digests.txt
+          
+          echo "📦 Digests found:"
+          cat all-digests.txt
+          
+          # Set outputs for each service
+          ORDER_CORE=$(grep "^order-core=" all-digests.txt | cut -d'=' -f2 || echo "sha256:unknown")
+          ORDER_STATE=$(grep "^order-state=" all-digests.txt | cut -d'=' -f2 || echo "sha256:unknown")
+          RISK_ENGINE=$(grep "^risk-engine=" all-digests.txt | cut -d'=' -f2 || echo "sha256:unknown")
+          TPSL_ENGINE=$(grep "^tp-sl-engine=" all-digests.txt | cut -d'=' -f2 || echo "sha256:unknown")
+          NOTIFY=$(grep "^notify-service=" all-digests.txt | cut -d'=' -f2 || echo "sha256:unknown")
+          
+          echo "ORDER_CORE_DIGEST=$ORDER_CORE" >> $GITHUB_OUTPUT
+          echo "ORDER_STATE_DIGEST=$ORDER_STATE" >> $GITHUB_OUTPUT
+          echo "RISK_ENGINE_DIGEST=$RISK_ENGINE" >> $GITHUB_OUTPUT
+          echo "TPSL_ENGINE_DIGEST=$TPSL_ENGINE" >> $GITHUB_OUTPUT
+          echo "NOTIFY_DIGEST=$NOTIFY" >> $GITHUB_OUTPUT
+          
+          echo "📋 Parsed digests:"
+          echo "  ORDER_CORE: $ORDER_CORE"
+          echo "  ORDER_STATE: $ORDER_STATE"
+          echo "  RISK_ENGINE: $RISK_ENGINE"
+          echo "  TPSL_ENGINE: $TPSL_ENGINE"
+          echo "  NOTIFY: $NOTIFY"
+
+      - name: Deploy to Staging VPS
+        uses: appleboy/ssh-action@v1.0.0
+        env:
+          ORDER_CORE_DIGEST: ${{ steps.digests.outputs.ORDER_CORE_DIGEST }}
+          ORDER_STATE_DIGEST: ${{ steps.digests.outputs.ORDER_STATE_DIGEST }}
+          RISK_ENGINE_DIGEST: ${{ steps.digests.outputs.RISK_ENGINE_DIGEST }}
+          TPSL_ENGINE_DIGEST: ${{ steps.digests.outputs.TPSL_ENGINE_DIGEST }}
+          NOTIFY_DIGEST: ${{ steps.digests.outputs.NOTIFY_DIGEST }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: ORDER_CORE_DIGEST,ORDER_STATE_DIGEST,RISK_ENGINE_DIGEST,TPSL_ENGINE_DIGEST,NOTIFY_DIGEST
+          script: |
+            set -e
+            
+            echo "🚀 Deploying to Staging..."
+            cd /app/trading || cd app/trading || exit 1
+            
+            # Create/Update .env file with digests/hashes from build variable
+            echo "📝 Exporting hashes to .env..."
+            cat <<EOF | sed 's/^[[:space:]]*//' > .env
+            ORDER_CORE_IMAGE=alexanderloveiris/order-core@${ORDER_CORE_DIGEST}
+            ORDER_STATE_IMAGE=alexanderloveiris/order-state@${ORDER_STATE_DIGEST}
+            RISK_ENGINE_IMAGE=alexanderloveiris/risk-engine@${RISK_ENGINE_DIGEST}
+            TPSL_ENGINE_IMAGE=alexanderloveiris/tp-sl-engine@${TPSL_ENGINE_DIGEST}
+            NOTIFY_SERVICE_IMAGE=alexanderloveiris/notify-service@${NOTIFY_DIGEST}
+            # Infrastructure
+            REDIS_HOST=redis
+            REDIS_PORT=6379
+            EOF
+            
+            echo "📊 Current .env content:"
+            cat .env
+            
+            # Pull latest images using the hashes in .env
+            echo "📥 Pulling Docker images..."
+            docker compose pull
+            
+            # Start/restart services (will use the hashes defined in .env)
+            echo "🔄 Starting services..."
+            docker compose up -d
+            
+            echo "✅ Staging deployment completed!"
+            docker compose ps
+
+      - name: Deployment Success Notification
+        if: success()
+        run: |
+          echo "✅ STAGING DEPLOYMENT SUCCESSFUL"
+          echo ""
+          echo "📋 Details:"
+          echo "  Workflow: ${{ github.event.workflow_run.name }}"
+          echo "  Branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "  Commit: ${{ github.event.workflow_run.head_sha }}"
+          echo "  Version: $(git describe --tags --always)"
+          echo ""
+          echo "🚀 Next step: Manually promote to production using promote-to-prod workflow"
